@@ -4,6 +4,8 @@ from models import TelemetryLog, Device, AutomationRule, Alert
 from auth_helper import token_required
 from routes.automations import evaluate_rule, execute_rule
 from datetime import datetime, timedelta
+from services.device_auth_service import validate_device
+from services.gateway_service import process_gateway
 
 telemetry_bp = Blueprint("telemetry", __name__)
 
@@ -15,7 +17,9 @@ def ingest_telemetry(current_user):
     Ingest a telemetry reading from a device.
     Also evaluates threshold-based automation rules.
     """
-    data = request.get_json()
+    data = process_gateway(
+        request.get_json()
+    )
     device_id = data.get("device_id")
     metric = data.get("metric")
     value = data.get("value")
@@ -58,6 +62,18 @@ def ingest_telemetry(current_user):
         )
         db.session.add(alert)
         db.session.commit()
+
+        token = request.headers.get(
+            "X-DEVICE-TOKEN"
+        )
+
+        device = validate_device(token)
+
+        if not device:
+
+            return jsonify({
+                "error":"Invalid Device"
+            }),401
 
     return jsonify({"message": "Telemetry recorded", "triggered_rules": triggered}), 201
 

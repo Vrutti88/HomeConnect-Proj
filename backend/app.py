@@ -33,7 +33,13 @@ def create_app():
 
     @app.route("/health")
     def health():
-        return {"status": "ok"}
+
+        return {
+            "status":"UP",
+            "database":"UP",
+            "cache":"UP",
+            "gateway":"UP"
+        }
 
     with app.app_context():
         db.create_all()

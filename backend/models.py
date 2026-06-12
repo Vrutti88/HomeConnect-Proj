@@ -33,6 +33,10 @@ class Device(db.Model):
 
     telemetry = db.relationship("TelemetryLog", backref="device", lazy=True)
     alerts = db.relationship("Alert", backref="device", lazy=True)
+    device_token = db.Column(
+        db.String(255),
+        unique=True
+    )
 
     def to_dict(self):
         return {

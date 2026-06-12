@@ -4,6 +4,11 @@ from models import Device, Alert
 from auth_helper import token_required
 from datetime import datetime
 import json
+from services.sync_service import queue_command
+from services.cache_service import (
+    get_cache,
+    set_cache
+)
 
 devices_bp = Blueprint("devices", __name__)
 
@@ -11,8 +16,30 @@ devices_bp = Blueprint("devices", __name__)
 @devices_bp.route("", methods=["GET"])
 @token_required
 def get_devices(current_user):
-    devices = Device.query.filter_by(user_id=current_user.id, is_active=True).all()
-    return jsonify([d.to_dict() for d in devices])
+
+    cache_key = f"devices:{current_user.id}"
+
+    cached = get_cache(cache_key)
+
+    if cached:
+        return jsonify(cached)
+
+    devices = Device.query.filter_by(
+        user_id=current_user.id,
+        is_active=True
+    ).all()
+
+    result = [
+        d.to_dict()
+        for d in devices
+    ]
+
+    set_cache(
+        cache_key,
+        result
+    )
+
+    return jsonify(result)
 
 
 @devices_bp.route("", methods=["POST"])
@@ -29,6 +56,12 @@ def add_device(current_user):
     )
     db.session.add(device)
     db.session.commit()
+
+    set_cache(
+        f"devices:{current_user.id}",
+        None
+    )
+
     return jsonify(device.to_dict()), 201
 
 
@@ -50,6 +83,12 @@ def update_device(current_user, device_id):
         device.last_seen = datetime.utcnow()
 
     db.session.commit()
+
+    set_cache(
+        f"devices:{current_user.id}",
+        None
+    )
+
     return jsonify(device.to_dict())
 
 
@@ -59,6 +98,12 @@ def delete_device(current_user, device_id):
     device = Device.query.filter_by(id=device_id, user_id=current_user.id).first_or_404()
     device.is_active = False
     db.session.commit()
+
+    set_cache(
+        f"devices:{current_user.id}",
+        None
+    )
+
     return jsonify({"message": "Device removed"})
 
 
@@ -71,8 +116,33 @@ def control_device(current_user, device_id):
 
     current_state = json.loads(device.state) if device.state else {}
     current_state.update(command)
-    device.state = json.dumps(current_state)
-    device.last_seen = datetime.utcnow()
-    db.session.commit()
 
-    return jsonify({"message": "Command sent", "device": device.to_dict()})
+    if device.status == "online":
+
+        device.state = json.dumps(current_state)
+        device.last_seen = datetime.utcnow()
+        db.session.commit()
+
+    else:
+
+        queue_command({
+            "device_id": device.id,
+            "command": command,
+            "timestamp": str(datetime.utcnow())
+        })
+
+    set_cache(
+        f"devices:{current_user.id}",
+        None
+    )
+
+    if device.status == "online":
+
+        return jsonify({
+            "message": "Command sent",
+            "device": device.to_dict()
+        })
+
+    return jsonify({
+        "message": "Device offline. Command queued for synchronization."
+    })

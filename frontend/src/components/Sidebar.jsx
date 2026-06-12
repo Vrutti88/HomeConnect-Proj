@@ -12,13 +12,13 @@ export default function Sidebar({ page, setPage }) {
 
   return (
     <aside style={{
-      width: 220, background: "#1e293b", display: "flex", flexDirection: "column",
+      width: 240, background: "#1e293b", display: "flex", flexDirection: "column",
       padding: "24px 0", borderRight: "1px solid #334155"
     }}>
       {/* Logo */}
       <div style={{ padding: "0 20px 28px", borderBottom: "1px solid #334155" }}>
         <div style={{ fontSize: 22, fontWeight: 700, color: "#38bdf8", letterSpacing: -0.5 }}>🏠 HomeConnect</div>
-        <div style={{ color: "#64748b", fontSize: 12, marginTop: 4 }}>Smart Home Platform</div>
+        <div style={{ color: "#64748b", fontSize: 12, marginTop: 4 }}>Smart Home Automation Platform</div>
       </div>
 
       {/* Nav */}
