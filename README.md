@@ -7,50 +7,128 @@ A full-stack smart home automation platform built for the System Design Final Ex
 
 ## 📋 Project Overview
 
-HomeConnect is a cloud-based smart home automation platform that enables users to:
+HomeConnect is a cloud-based Smart Home Automation Platform designed to manage and control IoT devices such as smart lights, thermostats, cameras, locks, and sensors. 
 
-- Register and authenticate securely (JWT)
-- Register, monitor, and control IoT devices (lights, thermostats, cameras, locks, sensors)
-- Create automation rules triggered by time or sensor thresholds
-- Ingest real-time telemetry data from devices
-- Receive and manage security/threshold alerts
+The platform allows users to:
+
+- Register and authenticate securely
+- Add and manage smart home devices
+- Monitor device telemetry in real time
+- Create automation rules
+- Receive security alerts
 - View a dashboard with live analytics
+- Control devices remotely
 
 ---
 
 ## 🏗️ System Architecture
 
 ```
-React Frontend (Port 3000)
-        │  REST API (JSON)
-        ▼
-Flask REST API (Port 5000)
-        │
-   ┌────┴────┐
-   │  JWT    │  ← Authentication Layer
-   └────┬────┘
-        │
-┌───────┼──────────────────────────────┐
-│       ▼                              │
-│  Route Handlers                      │
-│  /auth  /devices  /automations       │
-│  /telemetry  /alerts  /analytics     │
-│       │                              │
-│  Rule Engine (automations.py)        │
-│  - evaluate_rule()                   │
-│  - execute_rule()                    │
-│       │                              │
-│  SQLAlchemy ORM                      │
-└───────┼──────────────────────────────┘
-        │
-   MySQL Database
-   ┌─────────────────────────┐
-   │ users                   │
-   │ devices                 │
-   │ automation_rules        │
-   │ telemetry_logs          │
-   │ alerts                  │
-   └─────────────────────────┘
+    React Frontend (Port 3000)
+                │  REST API (JSON)
+                ▼
+    Flask REST API (Port 5001)
+                │
+   ┌────────────┼─────────────────┐
+   ▼            ▼                 ▼
+JWT Auth    Device Mgmt    Telemetry Service
+                                  │
+                                  ▼
+                          IoT Gateway Layer
+                                  │
+                                  ▼
+                          Device Authentication
+                                  │
+                                  ▼
+                          Automation Engine
+                                  │
+                   ┌──────────────┼──────────────┐
+                   ▼              ▼              ▼
+              Cache Layer   Alert Service    Sync Queue
+              (Redis Sim.)               (Fault Tolerance)
+                                  ▼
+                           MySQL Database
+```
+
+---
+
+## Features
+
+### User Authentication
+
+- JWT Authentication
+- Password Hashing
+- Protected Routes
+
+### Device Management 
+
+- Add Devices
+- Update Devices
+- Delete Devices
+- Remote Device Control
+
+### Device Authentication 
+
+- Device Token Validation
+- Secure Telemetry Submission
+
+### IoT Gateway 
+
+- Telemetry Validation
+- Timestamp Processing
+- Gateway Metadata Management
+
+### Automation Engine 
+
+Supports: 
+
+- Time-Based Rules
+- Threshold-Based Rules
+
+Examples: 
+
+- Turn lights on at 7 PM
+- Trigger alert if temperature exceeds 35°C
+- Detect motion events
+
+### Telemetry Processing 
+
+- Temperature Monitoring
+- Motion Detection
+- Smoke Detection
+- Humidity Monitoring
+
+### Alerts 
+
+- Security Alerts
+- Temperature Alerts
+- Motion Alerts
+- Smoke Alerts
+
+### Distributed Cache 
+
+-Implemented using an in-memory cache. 
+-Production deployment would use Redis. 
+
+### Fault Tolerance 
+
+-Offline device commands are stored in a synchronization queue and executed when the device reconnects. 
+
+### Health Monitoring Health endpoint:
+
+```text
+GET /health
+```
+
+Returns:
+
+```json
+{
+  "status": "UP",
+  "database": "UP",
+  "cache": "UP",
+  "gateway": "UP"
+}
 ```
 
 ---
@@ -137,11 +215,6 @@ Flask REST API (Port 5000)
 
 ## ⚙️ Setup Instructions
 
-### Prerequisites
-- Python 3.10+
-- Node.js 18+
-- MySQL 8.0 running locally
-
 ### 1. MySQL Setup
 
 ```sql
@@ -166,7 +239,7 @@ pip install -r requirements.txt
 python app.py
 ```
 
-Backend runs at **http://localhost:5000**
+Backend runs at **http://127.0.0.1:5001**
 
 ### 3. Frontend Setup
 
@@ -191,90 +264,64 @@ Frontend runs at **http://localhost:3000**
 
 ---
 
-## 🧠 Rule Engine Logic (Q5)
+## 📈 Scalability Considerations
 
-The automation rule engine (`routes/automations.py`) supports:
+- Horizontal Scaling
+- Load Balancing
+- Redis Distributed Cache
+- Kafka Event Streaming
+- MySQL Read Replicas
+- Database Sharding
+- Edge Device Synchronization
 
-```python
-# Time-based: fires when current time matches
-trigger_type = "time", trigger_value = "07:00"
+Production architecture may use: 
 
-# Threshold-based: fires when telemetry crosses a value
-trigger_type = "threshold", trigger_value = "temperature>28"
-```
-
-When telemetry is ingested via `POST /api/v1/telemetry`, the engine:
-1. Saves the reading to `telemetry_logs`
-2. Fetches all threshold rules for the user
-3. Evaluates each rule: `evaluate_rule(rule, metric, value)`
-4. If condition is true: `execute_rule(rule)` updates the target device state
-5. Generates an `Alert` if values are extreme (temperature > 35°C, motion, smoke)
+- Redis
+- Apache Kafka
+- MongoDB
+- AWS IoT Core
 
 ---
 
-## 📈 Scalability Considerations (Q6)
+## Additional Project Details 
 
-- **Horizontal scaling**: Flask app is stateless (JWT); multiple instances behind a load balancer
-- **Database**: MySQL with connection pooling via SQLAlchemy; sharding by `user_id` for scale
-- **Caching**: Redis can be added for device state cache and telemetry aggregates
-- **Message queue**: Kafka/RabbitMQ can replace synchronous telemetry ingestion for millions of devices
-- **Fault tolerance**: Devices going offline generate alerts; automation rules are idempotent
-- **Edge sync**: IoT gateways can buffer events locally during connectivity loss
+### Security 
+
+- JWT Authentication
+- Password Hashing
+- Device Authentication
+- Protected API Endpoints
+
+### Fault Tolerance 
+
+- Offline Synchronization Queue
+- Health Monitoring Endpoint
+- Gateway Processing Layer
 
 ---
 
 ## 🔮 Future Scope
 
-- WebSocket support for real-time device state push
-- Voice assistant integration (Alexa / Google Home)
-- Mobile app (React Native)
-- ML-based anomaly detection on telemetry streams
-- Multi-home / multi-user support
-- OTA firmware update management
-
----
-
-## 📁 Project Structure
-
-```
-homeconnect/
-├── backend/
-│   ├── app.py              # Flask app factory
-│   ├── config.py           # Configuration
-│   ├── database.py         # SQLAlchemy setup
-│   ├── models.py           # DB models (User, Device, AutomationRule, TelemetryLog, Alert)
-│   ├── auth_helper.py      # JWT helpers
-│   ├── seed.py             # Demo data seeder
-│   ├── requirements.txt
-│   └── routes/
-│       ├── auth.py
-│       ├── devices.py
-│       ├── automations.py  # ← Rule engine lives here
-│       ├── telemetry.py
-│       ├── alerts.py
-│       └── analytics.py
-└── frontend/
-    ├── index.html
-    ├── vite.config.js
-    ├── package.json
-    └── src/
-        ├── main.jsx
-        ├── App.jsx
-        ├── AuthContext.jsx
-        ├── services/api.js
-        ├── components/
-        │   └── Sidebar.jsx
-        └── pages/
-            ├── LoginPage.jsx
-            ├── Dashboard.jsx
-            ├── DevicesPage.jsx
-            ├── AutomationsPage.jsx
-            └── AlertsPage.jsx
-```
+- WebSocket Real-Time Updates
+- Mobile Application
+- Voice Assistant Integration
+- AI-Based Automation Recommendations
+- Multi-Home Management
 
 ---
 
 ## GitHub Repository
 
-> Upload this project to GitHub and paste the link here:  
-> `https://github.com/YOUR_USERNAME/homeconnect`
+Repository Link:
+
+`https://github.com/Vrutti88/HomeConnect-Proj`
+
+---
+
+## Author 
+
+Vrutti Patil 
+
+System Design Project 
+
+HomeConnect – Smart Home Automation Platform
