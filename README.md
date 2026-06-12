@@ -314,7 +314,7 @@ Production architecture may use:
 
 Repository Link:
 
-`https://github.com/Vrutti88/HomeConnect-Proj`
+**https://github.com/Vrutti88/HomeConnect-Proj.git**
 
 ---
 
